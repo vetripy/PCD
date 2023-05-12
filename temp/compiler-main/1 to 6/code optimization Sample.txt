@@ -1,0 +1,9 @@
+a=5 
+b=100 
+c=b*b 
+a=c+b 
+b=500 
+d=20 
+d=a+a 
+print(d) 
+$ 

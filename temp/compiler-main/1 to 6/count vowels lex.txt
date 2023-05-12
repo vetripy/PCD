@@ -1,0 +1,19 @@
+%{ 
+#include<stdio.h> 
+int vow=0,num=0,let=0; 
+%} 
+%% 
+[aeiouAEIOU] vow++; 
+[0-9] num++; 
+[A-Za-z] let++; 
+";" printf("\nVOWELS=%d,LETTERS=%d,DIGITS=%d",vow,let,num); 
+%% 
+int main() 
+{ 
+yylex(); 
+return 0; 
+} 
+int yywrap() 
+{ 
+return 0; 
+} 

@@ -1,0 +1,414 @@
+TEST.C FILE: 
+main() 
+{ 
+int a,b,c; 
+if(a<b) 
+{ 
+a=a+b;} 
+while(a<b) 
+{ 
+a=a+b; 
+} 
+if(a<=b) 
+{ 
+c=a-b; 
+} 
+else 
+{ 
+c=a+b; 
+} 
+} 
+CODE: 
+LEX FILE : 
+%{ 
+#include"y.tab.h" 
+#include<stdio.h> 
+#include<string.h> 
+int LineNo=1; 
+%} 
+identifier [a-zA-Z][_a-zA-Z0-9]* 
+number [0-9]+|([0-9]*\.[0-9]+) 
+%% 
+main\(\) return MAIN; 
+if return IF; 
+else return ELSE; 
+while return WHILE; 
+int | 
+char | 
+float return TYPE; 
+{identifier} {strcpy(yylval.var,yytext); 
+return VAR;} 
+{number} {strcpy(yylval.var,yytext); 
+return NUM;} 
+\< | 
+\> | 
+\>= | 
+\<= | 
+== {strcpy(yylval.var,yytext); 
+return RELOP;} 
+[ \t] ; 
+\n LineNo++; 
+. return yytext[0]; 
+%% 
+YACC FILE: 
+%{ 
+#include<string.h> 
+#include<stdio.h> 
+void yyerror(); 
+struct quad 
+{ 
+char op[5]; 
+char arg1[10]; 
+char arg2[10]; 
+char result[10]; 
+}QUAD[30]; 
+struct stack 
+{ 
+int items[100]; 
+int top; 
+}stk; 
+int Index=0,tIndex=0,StNo,Ind,tInd; 
+extern int LineNo; 
+%} 
+%union 
+{ 
+char var[10]; 
+} 
+%token <var> NUM VAR RELOP 
+%token MAIN IF ELSE WHILE TYPE%type <var> EXPR ASSIGNMENT 
+CONDITION IFST ELSEST 
+WHILELOOP 
+%left '-' '+' 
+%left '*' '/' 
+%% 
+PROGRAM : MAIN BLOCK 
+; 
+BLOCK: '{' CODE '}' 
+; 
+CODE: BLOCK 
+| STATEMENT CODE 
+| STATEMENT 
+; 
+STATEMENT: DESCT ';' 
+| ASSIGNMENT ';' 
+| CONDST 
+| WHILEST 
+; 
+DESCT: TYPE VARLIST 
+; 
+VARLIST: VAR ',' VARLIST 
+| VAR 
+; 
+ASSIGNMENT: VAR '=' EXPR{ 
+strcpy(QUAD[Index].op,"="); 
+strcpy(QUAD[Index].arg1,$3); 
+strcpy(QUAD[Index].arg2,""); 
+strcpy(QUAD[Index].result,$1); 
+strcpy($$,QUAD[Index++].result);} 
+; 
+EXPR: EXPR '+' EXPR {AddQuadruple("+",$1,$3,$$);} 
+| EXPR '-' EXPR {AddQuadruple("-",$1,$3,$$);} 
+| EXPR '*' EXPR {AddQuadruple("*",$1,$3,$$);} 
+| EXPR '/' EXPR {AddQuadruple("/",$1,$3,$$);} 
+| '-' EXPR {AddQuadruple("UMIN",$2,"",$$);} 
+| '(' EXPR ')' {strcpy($$,$2);} 
+| VAR 
+| NUM 
+; 
+CONDST: IFST{ 
+Ind=pop(); 
+sprintf(QUAD[Ind].result,"%d",Index); 
+Ind=pop(); 
+sprintf(QUAD[Ind].result,"%d",Index); 
+} 
+| IFST ELSEST 
+; 
+IFST: IF '(' CONDITION ')' { 
+strcpy(QUAD[Index].op,"=="); 
+strcpy(QUAD[Index].arg1,$3); 
+strcpy(QUAD[Index].arg2,"FALSE"); 
+strcpy(QUAD[Index].result,"-1"); 
+push(Index); 
+Index++; 
+} 
+BLOCK { 
+strcpy(QUAD[Index].op,"GOTO");strcpy(QUAD[Index].arg1,""); 
+strcpy(QUAD[Index].arg2,""); 
+strcpy(QUAD[Index].result,"-1"); 
+push(Index); 
+Index++; 
+}; 
+ELSEST: ELSE{ 
+tInd=pop(); 
+Ind=pop(); 
+push(tInd); 
+sprintf(QUAD[Ind].result,"%d",Index); 
+} 
+BLOCK{ 
+Ind=pop(); 
+sprintf(QUAD[Ind].result,"%d",Index); 
+}; 
+CONDITION: VAR RELOP VAR {AddQuadruple($2,$1,$3,$$); 
+StNo=Index-1; 
+} 
+| VAR 
+| NUM 
+; 
+WHILEST: WHILELOOP{ 
+Ind=pop(); 
+sprintf(QUAD[Ind].result,"%d",StNo); 
+Ind=pop(); 
+sprintf(QUAD[Ind].result,"%d",Index); 
+} 
+;WHILELOOP: WHILE '(' CONDITION ')' { 
+strcpy(QUAD[Index].op,"=="); 
+strcpy(QUAD[Index].arg1,$3); 
+strcpy(QUAD[Index].arg2,"FALSE"); 
+strcpy(QUAD[Index].result,"-1"); 
+push(Index); 
+Index++; 
+} 
+BLOCK { 
+strcpy(QUAD[Index].op,"GOTO"); 
+strcpy(QUAD[Index].arg1,""); 
+strcpy(QUAD[Index].arg2,""); 
+strcpy(QUAD[Index].result,"-1"); 
+push(Index); 
+Index++; 
+} 
+; 
+%% 
+extern FILE *yyin; 
+int main(int argc,char *argv[]) 
+{ 
+FILE *fp; 
+int i; 
+if(argc>1) 
+{ 
+fp=fopen(argv[1],"r"); 
+if(!fp) 
+{ 
+printf("\n File not found");exit(0); 
+} 
+yyin=fp; 
+} 
+yyparse(); 
+printf("\n\n\t\t ----------------------------""\n\t\t Pos Operator Arg1 Arg2 
+Result" "\n\t\t --------------------"); 
+for(i=0;i<Index;i++) 
+{ 
+printf("\n\t\t %d\t %s\t %s\t %s\t 
+%s",i,QUAD[i].op,QUAD[i].arg1,QUAD[i].arg2,QUAD 
+[i].result); 
+} 
+printf("\n\t\t -----------------------"); 
+printf("\n\n"); 
+return 0; 
+} 
+void push(int data) 
+{ 
+stk.top++; 
+if(stk.top==100) 
+{ 
+printf("\n Stack overflow\n"); 
+exit(0); 
+} 
+stk.items[stk.top]=data; 
+} 
+int pop() 
+{int data; 
+if(stk.top==-1) 
+{ 
+printf("\n Stack underflow\n"); 
+exit(0); 
+} 
+data=stk.items[stk.top--]; 
+return data; 
+} 
+void AddQuadruple(char op[5],char arg1[10],char arg2[10],char result[10]) 
+{ 
+strcpy(QUAD[Index].op,op); 
+strcpy(QUAD[Index].arg1,arg1); 
+strcpy(QUAD[Index].arg2,arg2); 
+sprintf(QUAD[Index].result,"t%d",tIndex++); 
+strcpy(result,QUAD[Index++].result); 
+} 
+void yyerror() 
+{ 
+printf("\n Error on line no= :%d",LineNo); 
+} 
+FRONT-END OF COMPILER:
+#include<stdlib.h> 
+#include<iostream> 
+#include<string.h> 
+#include<stdio.h> 
+using namespace std; 
+char *strrev(char *str) 
+{ 
+ int i = strlen(str) - 1, j = 0; 
+ char ch; 
+ while (i > j) 
+ { 
+ ch = str[i]; 
+ str[i] = str[j]; 
+ str[j] = ch; 
+ i--; 
+ j++; 
+ } 
+ return str; 
+} 
+void reverse(char str[], int length) 
+{ 
+ int start = 0; 
+ int end = length -1; 
+ while (start < end) 
+ { 
+ swap(*(str+start), *(str+end)); 
+ start++; 
+ end--; 
+ } 
+} 
+char* itoa(int num, char* str, int base) 
+{ 
+ int i = 0; 
+ bool isNegative = false; 
+ /* Handle 0 explicitely, otherwise empty string is printed for 0 */ 
+ if (num == 0) 
+ { 
+ str[i++] = '0'; 
+ str[i] = '\0'; 
+ return str; 
+ } 
+ // In standard itoa(), negative numbers are handled only with 
+ // base 10. Otherwise numbers are considered unsigned. 
+ if (num < 0 && base == 10) 
+ { 
+ isNegative = true; 
+ num = -num; 
+ } 
+ // Process individual digits 
+ while (num != 0) 
+ { 
+ int rem = num % base; 
+ str[i++] = (rem > 9)? (rem-10) + 'a' : rem + '0'; 
+ num = num/base; 
+ } 
+ // If number is negative, append '-' 
+ if (isNegative) 
+ str[i++] = '-'; 
+ str[i] = '\0'; // Append string terminator 
+ // Reverse the string 
+ reverse(str, i); 
+ return str; 
+} 
+struct tbl 
+{ 
+char arg1[10],arg2[10],op[10],res[10]; 
+}t[10]; 
+char s[20][20]; 
+int l; 
+int resol(int x, int j) 
+{ 
+//x- line no. in i/p 
+int k=0,n=strlen(s[x])-1; 
+//resolving from left, first operation 
+t[j].op[k]=s[x][n-1]; 
+t[j].arg1[k]=s[x][n-2]; 
+t[j].arg2[k]=s[x][n]; 
+itoa(l,t[j].res,10); 
+strcat(t[j].res,"t"); 
+strrev(t[j].res); 
+l++; 
+cout<<endl<<"\t"<<j<<"\t"<<t[j].op<<"\t"<<t[j].arg1<<"\t"<<t[j].arg2<<"\t"<<t[j].res
+; 
+j++; 
+//resolving the rest of the expression 
+for(int i=strlen(s[x])-4;i>0;i-=2) 
+{ 
+t[j].op[k]=s[x][i]; 
+if(t[j].op[k]=='=') 
+{ 
+t[j].op[k]='='; 
+itoa(l-1,t[j].arg1,10); 
+strcat(t[j].arg1,"t"); 
+strrev(t[j].arg1); 
+strcpy(t[j].arg2,""); 
+t[j].res[k]=s[x][i-1]; 
+cout<<endl<<"\t"<<j<<"\t"<<t[j].op<<"\t"<<t[j].arg1<<"\t"<<t[j].arg2<<"\t" 
+<<t[j].res; 
+j++; 
+} 
+else 
+{ 
+t[j].arg1[k]=s[x][i-1]; 
+strcpy(t[j].arg2,t[j-1].res); 
+itoa(l,t[j].res,10); 
+strcat(t[j].res,"t"); 
+strrev(t[j].res); 
+l++;cout<<endl<<"\t"<<j<<"\t"<<t[j].op<<"\t"<<t[j].arg1<<"\t("<<t[j].arg2<<")\t"<<t
+[j].res; 
+j++; 
+} 
+} 
+return j; 
+} 
+void iff() 
+{ 
+int i,j,k,n; 
+i=j=k=0; 
+//checking syntax 
+char *s1="if( )"; 
+for(i=0;i<3;i++) 
+if(s1[i]!=s[0][i]) 
+{ 
+cout<<"Format Line 1\nTry Again!"; 
+return; 
+} 
+if(s1[4]!=s[0][6]){ 
+cout<<"Format Line 1\nTry Again!"; 
+return; 
+} 
+char *s2="else"; 
+if(strcmp(s2,s[2])) 
+{ 
+cout<<"Format Line 3\nTry Again!"; 
+return; 
+} 
+cout<<"\tPos\tOp\tArg1\tArg2\tRes"; 
+//resolving if part 
+t[j].op[k]=s[0][4]; 
+t[j].arg1[k]=s[0][3]; 
+t[j].arg2[k]=s[0][5]; 
+strcpy(t[j].res,"t0"); 
+cout<<endl<<"\t"<<j<<"\t"<<t[j].op<<"\t"<<t[j].arg1<<"\t"<<t[j].arg2<<"\t" 
+<<t[j].res; 
+j++; 
+strcpy(t[j].op,"=="); 
+strcpy(t[j].arg1,t[j-1].res); 
+strcpy(t[j].arg2,"FALSE"); 
+int z=j+(int)((strlen(s[1])-1)/2+1); 
+itoa(z,t[j].res,10); 
+cout<<endl<<"\t"<<j<<"\t"<<t[j].op<<"\t"<<t[j].arg1<<"\t"<<t[j].arg2<<"\t"<<t[j].res
+; 
+j++; 
+l=1; //temp reg no. 
+//resolving the true stmt 
+j=resol(1,j); 
+//resolving the false stmt 
+j=resol(3,j); 
+} 
+int main(){ 
+fflush(stdin); 
+int i,j,k,c; 
+i=j=k=0; 
+cout<<"\n\tFront End of Compiler- 3-Addr-Code Generator for Conditional If"; 
+cout<<"\n\t\t\tQuadruple Implementation\n"; 
+cout<<"\nEnter stmts, to terminate enter ~ in a new line\n"; 
+do{ 
+gets(s[i]); 
+i++; 
+}while(strcmp(s[i-1],"~")); 
+iff(); 
+cout<<"\nThe End"; 
+return 0; 
+}

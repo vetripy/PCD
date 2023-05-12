@@ -1,0 +1,62 @@
+//PROGRAM FOR POSTFIX NOTATION USING LEX TOOL 
+%{ 
+#include<stdlib.h> 
+#include<stdio.h> 
+#include"y.tab.h" 
+%} 
+%% 
+[0-9]+ {yylval.no=atoi(yytext);return(DIGIT); } 
+[a-z|A-Z][a-z|A-Z|0-9_]* {strcpy(yylval.str,yytext);return (ID);} 
+"+" {return(PLUS);} 
+"-" {return(MINUS);} 
+"*" {return(MUL);} 
+"/" {return(DIV);} 
+"^" {return(EXPO);} 
+"(" {return(OPEN);} 
+")" {return(CLOSE);} 
+"\n" {return 0;} 
+[\t] ; 
+%% 
+//PROGRAM FOR POSTFIX NOTATION USING YACC TOOL 
+%{ 
+#include<stdio.h> 
+%} 
+%union 
+{ 
+ int no; 
+ char str[10]; 
+} 
+%token<no> DIGIT 
+%token<str> ID 
+%left PLUS MINUS 
+%left MUL DIV 
+%right EXPO 
+%left OPEN CLOSE 
+%% 
+STMT: EXPR{printf("\n");} 
+EXPR: EXPR PLUS EXPR{printf("+");} 
+| EXPR MINUS EXPR{printf("-");} 
+| EXPR MUL EXPR{printf("*");} 
+| EXPR DIV EXPR{printf("/");} 
+| EXPR EXPO EXPR{printf("^");} 
+| OPEN EXPR CLOSE 
+| DIGIT{printf("%d",yylval.no);} 
+| ID{printf("%s",yylval.str);} 
+; 
+%% 
+int main(void) 
+{ 
+ printf("\n"); 
+ yyparse(); 
+ printf("\n"); 
+ return 0; 
+} 
+int yywrap() 
+{ 
+ return 1; 
+} 
+OUTPUT: 
+[julina@localhost julina]$ lex postfix.l 
+[julina@localhost julina]$ yacc -d postfix.y 
+[julina@localhost julina]$ cc lex.yy.c y.tab.c -ll -ly 
+[julina@localhost julina]$ ./a.out

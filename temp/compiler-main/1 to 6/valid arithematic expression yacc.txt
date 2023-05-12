@@ -1,0 +1,41 @@
+%{ 
+#include<stdio.h> 
+#include<ctype.h> 
+#include<stdlib.h> 
+#include<string.h> 
+#define YYSTYPE double 
+%} 
+%token num 
+%left '+' '-' 
+%left '*' '/' 
+%% 
+st: st expr '\n' {printf("The given expression is Valid");} 
+|st '\n' 
+| 
+|error '\n' {printf("The given expression is Invalid");} 
+; 
+expr: num 
+|expr '+' expr 
+|expr '/' expr 
+%% 
+main() 
+{ 
+printf(" Enter the expression to be validated:"); 
+yyparse(); 
+} 
+yylex() 
+{ 
+int ch; 
+while((ch=getchar())==' '); 
+if(isdigit(ch)|ch=='.') 
+{ 
+ungetc(ch,stdin); 
+scanf("%lf",&yylval); 
+return num; 
+} 
+return ch; 
+} 
+yyerror(char *s) 
+{ 
+printf("%S",s); 
+} 
